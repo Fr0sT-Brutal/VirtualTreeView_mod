@@ -205,7 +205,11 @@ var // Clipboard format IDs used in OLE drag'n drop and clipboard transfers.
 
 type
   // Alias defintions for convenience
+{$if CompilerVersion = 23}
+  TImageIndex = Vcl.ImgList.TImageIndex;
+{$else}
   TImageIndex = System.UITypes.TImageIndex;
+{$ifend}
   TCanvas = Vcl.Graphics.TCanvas;
 
 
@@ -335,6 +339,7 @@ type
     csMixedDisabled     // disabled 3-state checkbox
   );
 
+{$if CompilerVersion > 23}
   /// Adds some convenience methods to type TCheckState
   TCheckStateHelper = record helper for TCheckState
   strict private
@@ -358,6 +363,33 @@ type
     function IsUnChecked(): Boolean; inline;
     function IsMixed():     Boolean; inline;
   end;
+{$else}
+function CheckStateGetPressed(CheckState: TCheckState): TCheckState; inline;
+function CheckStateGetUnpressed(CheckState: TCheckState): TCheckState; inline;
+function CheckStateGetEnabled(CheckState: TCheckState): TCheckState; inline;
+function CheckStateGetToggled(CheckState: TCheckState): TCheckState; inline;
+function CheckStateIsDisabled(CheckState: TCheckState): Boolean; inline;
+function CheckStateIsChecked(CheckState: TCheckState): Boolean; inline;
+function CheckStateIsUnchecked(CheckState: TCheckState): Boolean; inline;
+function CheckStateIsMixed(CheckState: TCheckState): Boolean; inline;
+
+const
+  // Lookup to quickly convert a specific check state into its pressed counterpart and vice versa.
+  PressedState: array[TCheckState] of TCheckState = (
+    csUncheckedPressed, csUncheckedPressed, csCheckedPressed, csCheckedPressed, csMixedPressed, csMixedPressed, csUncheckedDisabled, csCheckedDisabled, csMixedDisabled
+  );
+  UnpressedState: array[TCheckState] of TCheckState = (
+    csUncheckedNormal, csUncheckedNormal, csCheckedNormal, csCheckedNormal, csMixedNormal, csMixedNormal, csUncheckedDisabled, csCheckedDisabled, csMixedDisabled
+  );
+  EnabledState: array[TCheckState] of TCheckState = (
+    csUncheckedNormal, csUncheckedPressed, csCheckedNormal, csCheckedPressed, csMixedNormal, csMixedPressed, csUncheckedNormal, csCheckedNormal, csMixedNormal
+  );
+  ToggledState: array[TCheckState] of TCheckState = (
+    csCheckedNormal, csCheckedPressed, csUnCheckedNormal, csUnCheckedPressed, csCheckedNormal, csCheckedPressed, csUncheckedDisabled, csCheckedDisabled, csMixedDisabled
+  );
+
+type
+{$ifend}
 
   TCheckImageKind = (
     ckCustom,         // application defined check images
@@ -955,6 +987,7 @@ type
     sdDescending
   );
 
+  {$if CompilerVersion > 23}
   TSortDirectionHelper = record helper for VirtualTrees.TSortDirection
   strict private
     const cSortDirectionToInt: Array [TSortDirection] of Integer = (1, -1);
@@ -962,6 +995,7 @@ type
     /// Returns +1 for ascending and -1 for descending sort order.
     function ToInt(): Integer; inline;
   end;
+  {$ifend}
 
   // Used during owner draw of the header to indicate which drop mark for the column must be drawn.
   TVTDropMarkMode = (
@@ -12494,7 +12528,11 @@ begin
                       begin
                         if Run.CheckType in [ctCheckBox, ctTriStateCheckBox] then
                         begin
+                          {$if CompilerVersion > 23}
                           if not Self.GetCheckState(Run).IsDisabled() then
+                          {$else}
+                          if CheckStateIsDisabled(Self.GetCheckState(Run)) then
+                          {$ifend}
                             SetCheckState(Run, csUncheckedNormal);
                           // Check if the new child state was set successfully, otherwise we have to adjust the
                           // node's new check state accordingly.
@@ -12533,7 +12571,11 @@ begin
                       begin
                         if Run.CheckType in [ctCheckBox, ctTriStateCheckBox] then
                         begin
+                          {$if CompilerVersion > 23}
                           if not Self.GetCheckState(Run).IsDisabled() then
+                          {$else}
+                          if CheckStateIsDisabled(Self.GetCheckState(Run)) then
+                          {$ifend}
                             SetCheckState(Run, csCheckedNormal);
                           // Check if the new child state was set successfully, otherwise we have to adjust the
                           // node's new check state accordingly.
@@ -12580,10 +12622,14 @@ begin
             end;
         end;
 
-        if Result then
-          CheckState := Value // Set new check state
-        else
-          CheckState := Self.GetCheckState(Node).GetUnpressed(); // Reset dynamic check state.
+      if Result then
+        CheckState := Value // Set new check state
+      else
+      {$if CompilerVersion > 23}
+        CheckState := Self.GetCheckState(Node).GetUnpressed(); // Reset dynamic check state.
+      {$else}
+        CheckState := CheckStateGetUnpressed(Self.GetCheckState(Node)); // Reset dynamic check state.
+      {$ifend}
 
         // Propagate state up to the parent.
         if not (vsInitialized in Parent.States) then
@@ -14530,7 +14576,11 @@ begin
         lItem := GetFirst;
       //for i:=0 to List.Items.Count-1 do begin
       while Assigned(lItem) do begin
+        {$if CompilerVersion > 23}
         if not pExcludeDisabled or not CheckState[lItem].IsDisabled() then
+        {$else}
+        if not pExcludeDisabled or not CheckStateIsDisabled(CheckState[lItem]) then
+        {$ifend}
           CheckState[lItem] := aCheckState;
         if pSelectedOnly then
           lItem := GetNextSelected(lItem)
@@ -18668,7 +18718,11 @@ begin
       if Run.CheckType in [ctCheckBox, ctTriStateCheckBox] then
       begin
         Inc(BoxCount);
+        {$if CompilerVersion > 23}
         if NewCheckState.IsChecked then
+        {$else}
+        if CheckStateIsChecked(NewCheckState) then
+        {$ifend}
           Inc(CheckCount);
         PartialCheck := PartialCheck or (NewCheckState = csMixedNormal);
       end;
@@ -18677,7 +18731,11 @@ begin
       if Run.CheckType in [ctCheckBox, ctTriStateCheckBox] then
       begin
         Inc(BoxCount);
+        {$if CompilerVersion > 23}
         if GetCheckState(Run).IsChecked then
+        {$else}
+        if CheckStateIsChecked(GetCheckState(Run)) then
+        {$ifend}
           Inc(CheckCount);
         PartialCheck := PartialCheck or (GetCheckState(Run) = csMixedNormal);
       end;
@@ -19417,7 +19475,11 @@ begin
     ctButton,
     ctCheckBox:
     begin
+      {$if CompilerVersion > 23}
       Result := CheckState.GetToggled();
+      {$else}
+      Result := CheckStateGetToggled(CheckState);
+      {$ifend}
     end;//ctCheckbox
     ctRadioButton:
       Result := csCheckedNormal;
@@ -21935,10 +21997,18 @@ begin
   else
     IsHot := False;
 
+  {$if CompilerVersion > 23}
   if ImgCheckState.IsDisabled then begin // disabled image?
+  {$else}
+  if CheckStateIsDisabled(ImgCheckState) then begin // disabled image?
+  {$ifend}
     // We need to use disabled images, so map ImgCheckState value from disabled to normal, as disabled state is expressed by ImgEnabled.
     ImgEnabled := False;
+    {$if CompilerVersion > 23}
     ImgCheckState := ImgCheckState.GetEnabled();
+    {$else}
+    ImgCheckState := CheckStateGetEnabled(ImgCheckState);
+    {$ifend}
   end;//if
 
   if ImgCheckType = ctTriStateCheckBox then
@@ -23080,11 +23150,13 @@ begin
         SelfCheckState := Self.GetCheckState(Node);
         if ((ParentCheckState = csCheckedNormal)
              or (ParentCheckState = csUncheckedNormal))
+            {$if CompilerVersion > 23}
             and (not SelfCheckState.IsDisabled())
-            and (SelfCheckState <> ParentCheckState) 
-            and (Parent <> FRoot)
-        then
-          SetCheckState(Node, Node.Parent.CheckState);
+            {$else}
+            and (not CheckStateIsDisabled(SelfCheckState))
+            {$ifend}
+            and (SelfCheckState <> ParentCheckState) then
+          SetCheckState(Node, ParentCheckState);
       end
       else if (toSyncCheckboxesWithSelection in TreeOptions.SelectionOptions) then
         Node.CheckType := TCheckType.ctCheckBox;
@@ -35064,8 +35136,8 @@ end;
 procedure TVirtualNode.SetData(pUserData: Pointer);
 
 
-  // Can be used to set user data of a PVirtualNode with the size of a pointer, useful for setting
-  // A pointer to a record or a reference to a class instance.
+// Can be used to set user data of a PVirtualNode with the size of a pointer, useful for setting
+// A pointer to a record or a reference to a class instance.
 var
   NodeData: PPointer;
 begin
@@ -35077,8 +35149,8 @@ end;
 procedure TVirtualNode.SetData(const pUserData: IInterface);
 
 
-  // Can be used to set user data of a PVirtualNode to a class instance,
-  // will take care about reference counting.
+// Can be used to set user data of a PVirtualNode to a class instance,
+// will take care about reference counting.
 
 begin
   pUserData._AddRef();
@@ -35099,7 +35171,7 @@ end;
 
 function TVTImageInfo.Equals(const pImageInfo2: TVTImageInfo): Boolean;
 
-  // Returns true if both images are the same, does not regard Ghosted and position.
+// Returns true if both images are the same, does not regard Ghosted and position.
 
 begin
   Result := (Self.Index = pImageInfo2.Index) and (Self.Images = pImageInfo2.Images);
@@ -35113,6 +35185,8 @@ begin
   Self.Column := pColumn;
   Self.ExportType := pExportType;
 end;
+
+{$if CompilerVersion > 23}
 
 { TCheckStateHelper }
 
@@ -35163,6 +35237,49 @@ begin
   Result := cSortDirectionToInt[Self];
 end;
 
+{$else}
+
+function CheckStateIsDisabled(CheckState: TCheckState): Boolean;
+begin
+  Result := CheckState >= TCheckState.csUncheckedDisabled;
+end;
+
+function CheckStateIsChecked(CheckState: TCheckState): Boolean;
+begin
+  Result := CheckState in [csCheckedNormal, csCheckedPressed, csCheckedDisabled];
+end;
+
+function CheckStateIsUnchecked(CheckState: TCheckState): Boolean;
+begin
+  Result := CheckState in [csUncheckedNormal, csUncheckedPressed, csUncheckedDisabled];
+end;
+
+function CheckStateIsMixed(CheckState: TCheckState): Boolean;
+begin
+  Result := CheckState in [csMixedNormal, csMixedPressed, csMixedDisabled];
+end;
+
+function CheckStateGetEnabled(CheckState: TCheckState): TCheckState;
+begin
+  Result := EnabledState[CheckState];
+end;
+
+function CheckStateGetPressed(CheckState: TCheckState): TCheckState;
+begin
+  Result := PressedState[CheckState];
+end;
+
+function CheckStateGetUnpressed(CheckState: TCheckState): TCheckState;
+begin
+  Result := UnpressedState[CheckState];
+end;
+
+function CheckStateGetToggled(CheckState: TCheckState): TCheckState;
+begin
+  Result := ToggledState[CheckState];
+end;
+
+{$ifend}
 
 { TVTPaintInfo }
 
