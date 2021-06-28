@@ -21,6 +21,12 @@ unit VirtualTrees;
 // Portions created by digital publishing AG are Copyright
 // (C) 1999-2001 digital publishing AG. All Rights Reserved.
 //----------------------------------------------------------------------------------------------------------------------
+{$DEFINE Fr0sT_mod}
+// ###  Fr0sT mod:  ###
+// * Zebra line painting (odd and even lines could be filled with different background color)
+//    Added: toZebraLines value to TVTPaintOption
+//           OddLineColor, EvenLineColor fields to TVTColors
+// ####################
 //
 // For a list of recent changes please see file CHANGES.TXT
 //
@@ -495,6 +501,10 @@ type
     toUseExplorerTheme,        // Use the explorer theme if run under Windows Vista (or above).
     toHideTreeLinesIfThemed,   // Do not show tree lines if theming is used.
     toShowFilteredNodes        // Draw nodes even if they are filtered out.
+    {$IFDEF Fr0sT_mod}
+    // Feature: Zebra lines
+    , toZebraLines             // Paint odd and even lines with different background colors
+    {$ENDIF Fr0sT_mod}
   );
   TVTPaintOptions = set of TVTPaintOption;
 
@@ -1685,7 +1695,8 @@ type
       cGridLineColor, cTreeLineColor, cUnfocusedSelectionColor, cBorderColor, cHotColor,
       cFocusedSelectionBorderColor, cUnfocusedSelectionBorderColor, cDropTargetBorderColor,
       cSelectionRectangleBlendColor, cSelectionRectangleBorderColor, cHeaderHotColor,
-      cSelectionTextColor, cUnfocusedColor);
+      cSelectionTextColor, cUnfocusedColor
+      {$IFDEF Fr0sT_mod}, cOddLineColor, cEvenLineColor {$ENDIF Fr0sT_mod} );
 
     // Please make sure that the published Color properties at the corresponding index
     // have the same color if you change anything here!
@@ -1706,8 +1717,11 @@ type
     clHighlight,            // SelectionRectangleBorderColor
     clBtnShadow,            // HeaderHotColor
     clHighlightText,        // SelectionTextColor
-    clInactiveCaptionText); // UnfocusedColor  [IPK]
-
+    clInactiveCaptionText   // UnfocusedColor  [IPK]
+    {$IFDEF Fr0sT_mod}
+    , cl3DLight
+    , clWindow
+    {$ENDIF Fr0sT_mod} );
   private
     FOwner: TBaseVirtualTree;
     FColors: array[TVTColorEnum] of TColor; // [IPK] 15 -> 16
@@ -1749,6 +1763,11 @@ type
     property UnfocusedSelectionColor: TColor index cUnfocusedSelectionColor read GetColor write SetColor default clInactiveCaption;
     /// The border color of selected nodes in case the tree does not have the focus and the toPopupMode flag is not set.
     property UnfocusedSelectionBorderColor: TColor index cUnfocusedSelectionBorderColor read GetColor write SetColor default clInactiveCaption;
+    {$IFDEF Fr0sT_mod}
+    // Feature: Zebra lines
+    property OddLineColor: TColor index cOddLineColor read GetColor write SetColor default cl3DLight;
+    property EvenLineColor: TColor index cEvenLineColor read GetColor write SetColor default clWindow;
+    {$ENDIF Fr0sT_mod}
   end;
 
   {$if CompilerVersion < 24}
@@ -12990,6 +13009,24 @@ begin
   BackColor := FColors.BackGroundColor;
   with PaintInfo do
   begin
+    {$IFDEF Fr0sT_mod}
+    // Feature: Zebra lines
+      if toZebraLines in TreeOptions.PaintOptions then
+      begin
+        EraseAction := eaColor;
+        if Node.Index mod 2 = 0 then
+          BackColor := Colors.EvenLineColor
+        else
+          BackColor := Colors.OddLineColor;
+      end
+      else
+      begin
+    EraseAction := eaDefault;
+        BackColor := Color;
+      end;
+    {$ELSE}
+      EraseAction := eaDefault;
+    {$ENDIF Fr0sT_mod}
     EraseAction := eaDefault;
 
     if Floating then
